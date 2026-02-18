@@ -228,7 +228,7 @@ function moveBoss(){boss.moveTimer++;boss.x+=boss.vx;if(boss.x<60||boss.x>420)bo
 // ===== 6WAYショット =====
 function shoot6() {
     const slow = keys['Shift'];
-    const speed = 7; // ←7から10に変更
+    const speed = 7; // 速さ
     if (slow) {
         const offsets = [-24, -14, -6, 6, 14, 24];
         offsets.forEach(off => shots.push({
@@ -392,6 +392,7 @@ function draw(){
 
     function getBossColor(){
       switch(stage){
+        //case 1: return "deepskyblue";
         case 1: return "deepskyblue";
         case 2: return "lime";
         case 3: return "orange";
