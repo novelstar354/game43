@@ -228,7 +228,7 @@ function moveBoss(){boss.moveTimer++;boss.x+=boss.vx;if(boss.x<60||boss.x>420)bo
 // ===== 6WAYショット =====
 function shoot6() {
     const slow = keys['Shift'];
-    const speed = 7; // 速さ
+    const speed = 10; // 速さ
     if (slow) {
         const offsets = [-24, -14, -6, 6, 14, 24];
         offsets.forEach(off => shots.push({
