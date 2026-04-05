@@ -265,15 +265,26 @@ function initOverlayParticles(color){
  for(let i=0;i<150;i++){overlayParticles.push({x:Math.random()*480,y:Math.random()*720,vx:(Math.random()-0.5)*2,vy:(Math.random()-0.5)*2,r:Math.random()*3+1,color:color});}
 }
 function drawOverlayParticles(){octx.clearRect(0,0,480,720);overlayParticles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>480)p.vx*=-1;if(p.y<0||p.y>720)p.vy*=-1;octx.fillStyle=p.color;octx.beginPath();octx.arc(p.x,p.y,p.r,0,Math.PI*2);octx.fill();});requestAnimationFrame(drawOverlayParticles);}
+function drawOverlayParticles(){octx.clearRect(0,0,480,720);overlayParticles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>480)p.vx*=-1;if(p.y<0||p.y>720)p.vy*=-1;octx.fillStyle=p.color;octx.beginPath();octx.arc(p.x,p.y,p.r,0,Math.PI*2);octx.fill();});requestAnimationFrame(drawOverlayParticles);}
 function showOverlay(type){
  overlay.style.display='flex';
- overlayTitle.textContent = type==="gameover"?"GAME OVER":"★ GAME CLEAR ★";
- overlayTitle.style.color = type==="gameover"?"#ff4444":"#44f";
- overlayScore.textContent = `Score: ${score}`;
+
+ //overlayTitle.textContent = type==="gameover" ? "GAME OVER" : "★ GAME CLEAR ★";
+    //overlayTitle./*textContent*/innerHTML = type==="gameover" ? "GAME OVER" :`★ GAME CLEAR ★<br> Difficulty: ${DIFF_NAME}` ;
+    overlayTitle./*textContent*/innerHTML = type==="gameover" ? `GAME OVER <br>Difficulty: ${DIFF_NAME}` :`★ GAME CLEAR ★<br> Difficulty: ${DIFF_NAME}` ;
+ overlayTitle.style.color = type==="gameover" ? "#ff4444" : "#44f";
+
+ // ★ 強制的に更新
+ overlayScore.innerHTML = `
+   Score: ${score}<br>
+   Difficulty: ${DIFF_NAME}
+ `;
+
+ overlayScore.style.display = "block"; // ← これ追加（重要）
+
  overlayScale=1;
  initOverlayParticles(type==="gameover"?"#ff4444":"#44f");
  drawOverlayParticles();
- if(type==="gameclear") effects.push({x:240,y:360,vx:0,vy:0,t:200,star:true});
 }
 
 // ===== メイン =====
