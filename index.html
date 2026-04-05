@@ -69,6 +69,7 @@ canvas{display:block;margin:0 auto;background:#000}
 <canvas id="game"></canvas>
 
 <script>
+let DIFF_NAME = "Normal"; // ← 追加
 const canvas=document.getElementById("game");
 const ctx=canvas.getContext("2d");
 canvas.width=480; canvas.height=720;
@@ -130,7 +131,8 @@ options.forEach((o,i)=>{
 });
 
 function selectDifficulty(){
- DIFF = diffData[options[selectedIndex].dataset.d];
+ DIFF_NAME = options[selectedIndex].dataset.d; // ← 追加
+ DIFF = diffData[DIFF_NAME];
  menu.style.display='none';
  startGame();
 }
@@ -264,7 +266,6 @@ function initOverlayParticles(color){
  overlayParticles=[];
  for(let i=0;i<150;i++){overlayParticles.push({x:Math.random()*480,y:Math.random()*720,vx:(Math.random()-0.5)*2,vy:(Math.random()-0.5)*2,r:Math.random()*3+1,color:color});}
 }
-function drawOverlayParticles(){octx.clearRect(0,0,480,720);overlayParticles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>480)p.vx*=-1;if(p.y<0||p.y>720)p.vy*=-1;octx.fillStyle=p.color;octx.beginPath();octx.arc(p.x,p.y,p.r,0,Math.PI*2);octx.fill();});requestAnimationFrame(drawOverlayParticles);}
 function drawOverlayParticles(){octx.clearRect(0,0,480,720);overlayParticles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>480)p.vx*=-1;if(p.y<0||p.y>720)p.vy*=-1;octx.fillStyle=p.color;octx.beginPath();octx.arc(p.x,p.y,p.r,0,Math.PI*2);octx.fill();});requestAnimationFrame(drawOverlayParticles);}
 function showOverlay(type){
  overlay.style.display='flex';
