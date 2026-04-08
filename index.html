@@ -57,6 +57,7 @@ canvas{display:block;margin:0 auto;background:#000}
  <div class="div-option" data-d="Normal">Normal</div>
  <div class="div-option" data-d="Hard">Hard</div>
  <div class="div-option" data-d="Lunatic">Lunatic</div>
+ <div class="div-option" data-d="Insane" style="display:none;">Insane</div>
 </div>
 
 <div id="overlay">
@@ -80,7 +81,8 @@ const diffData={
  Easy:{mul:0.7,rate:120,hpMul:1},
  Normal:{mul:1,rate:90,hpMul:1},
  Hard:{mul:1.4,rate:60,hpMul:1},
- Lunatic:{mul:3,rate:20,hpMul:2}
+ Lunatic:{mul:3,rate:20,hpMul:2},
+ Insane:{mul:7,rate:6,hpMul:4}
 };
 
 let DIFF=diffData.Normal;
@@ -96,7 +98,24 @@ function updateMenuVisual(){
     o.classList.toggle("selected", i===selectedIndex);
   });
 }
+let insaneUnlocked = false;
 
+document.addEventListener("keydown",e=>{
+  if(e.altKey && e.key.toLowerCase()==='k'){
+    if(!insaneUnlocked){
+      insaneUnlocked = true;
+
+      const insaneOption = document.querySelector('[data-d="Insane"]');
+      insaneOption.style.display = "block";
+
+      // options配列を更新（超重要）
+      options.push(insaneOption);
+
+      alert("Insane difficulty unlocked...");
+    }
+  }
+});
+selectedIndex = Math.min(selectedIndex, options.length-1);
 updateMenuVisual();
 
 document.addEventListener("keydown",e=>{
@@ -145,6 +164,71 @@ function applySafetyLives(){
   if(DIFF===diffData.Safety){
     player.lives = 5;
   }
+ if(DIFF_NAME==="Insane" && boss.active){
+
+  // 常時スパイラル（高速）
+  if(timer%6===0){
+    spiral(boss.x,boss.y,timer*2);
+  }
+
+  // 二重円形（ズレあり）
+  if(timer%20===0){
+    circle(boss.x,boss.y,80,3.5);
+    circle(boss.x,boss.y,80,2.0);
+  }
+
+  // 星弾幕を高速化
+  if(timer%15===0){
+    starSpell(boss.x,boss.y,timer);
+  }
+
+  // レーザー乱発
+  if(timer%40===0){
+    for(let i=0;i<4;i++){
+      laser(Math.random()*480);
+    }
+  }
+
+  // 雨強化
+  if(timer%25===0){
+    for(let i=0;i<60;i++){
+      enemyBullets.push({
+        x:Math.random()*480,
+        y:0,
+        vx:Math.sin(i)*1.5,
+        vy:4+Math.random()*3
+      });
+    }
+  }
+}
+// 追尾弾（避けゲーの本質）
+if(DIFF_NAME==="Insane" && timer%18===0){
+  let dx = player.x - boss.x;
+  let dy = player.y - boss.y;
+  let len = Math.hypot(dx,dy);
+
+  enemyBullets.push({
+    x:boss.x,
+    y:boss.y,
+    vx:(dx/len)*5,
+    vy:(dy/len)*5
+  });
+}
+// 壁弾（横から圧縮）
+if(DIFF_NAME==="Insane" && timer%90===0){
+  for(let y=0;y<720;y+=20){
+    enemyBullets.push({x:0,y:y,vx:3,vy:0});
+    enemyBullets.push({x:480,y:y,vx:-3,vy:0});
+  }
+}
+if(DIFF_NAME==="Insane"){
+  ctx.fillStyle="rgba(255,0,255,0.05)";
+  ctx.fillRect(0,0,480,720);
+}
+if(DIFF_NAME==="Insane"){
+  boss.vx = Math.sin(timer*0.05)*5;
+  boss.vy = Math.cos(timer*0.04)*3;
+}
 }
 
 let autoFire=false;
@@ -230,7 +314,7 @@ function moveBoss(){boss.moveTimer++;boss.x+=boss.vx;if(boss.x<60||boss.x>420)bo
 // ===== 6WAYショット =====
 function shoot6() {
     const slow = keys['Shift'];
-    const speed = 10; // 速さ
+    const speed = 7; // 速さ
     if (slow) {
         const offsets = [-24, -14, -6, 6, 14, 24];
         offsets.forEach(off => shots.push({
