@@ -57,8 +57,13 @@ canvas{display:block;margin:0 auto;background:#000}
  <div class="div-option" data-d="Easy">Easy</div>
  <div class="div-option" data-d="Normal">Normal</div>
  <div class="div-option" data-d="Hard">Hard</div>
- <div class="div-option" data-d="Lunatic">Lunatic</div>
+<div class="div-option" data-d="Lunatic"">
+  Lunatic
+</div>
  <div class="div-option" data-d="Insane" style="display:none;">Insane</div>
+<div class="div-option" data-d="Strange" style="display:none;">
+  Strange
+</div>
 </div>
 
 <div id="overlay">
@@ -83,7 +88,8 @@ const diffData={
  Normal:{mul:1,rate:90,hpMul:1},
  Hard:{mul:1.4,rate:60,hpMul:1},
  Lunatic:{mul:3,rate:20,hpMul:2},
- Insane:{mul:7,rate:6,hpMul:4}
+ Insane:{mul:7,rate:6,hpMul:4},
+ Strange:{mul:2.2,rate:35,hpMul:2.5}
 };
 
 let DIFF=diffData.Normal;
@@ -91,7 +97,9 @@ let DIFF=diffData.Normal;
 // ===== メニュー =====
 // ===== メニュー =====
 const menu=document.getElementById("menu");
-const options = Array.from(menu.querySelectorAll(".div-option"));
+let options = Array.from(
+  menu.querySelectorAll('.div-option:not([style*="display:none"])')
+);
 let selectedIndex = 0;
 
 function updateMenuVisual(){
@@ -103,16 +111,46 @@ let insaneUnlocked = false;
 
 document.addEventListener("keydown",e=>{
   if(e.altKey && e.key.toLowerCase()==='k'){
+
     if(!insaneUnlocked){
+
       insaneUnlocked = true;
 
-      const insaneOption = document.querySelector('[data-d="Insane"]');
+      const insaneOption =
+        document.querySelector('[data-d="Insane"]');
+
       insaneOption.style.display = "block";
 
-      // options配列を更新（超重要）
-      options.push(insaneOption);
+      // ← 修正
+      options = Array.from(
+        menu.querySelectorAll('.div-option:not([style*="display:none"])')
+      );
 
       alert("Insane difficulty unlocked...");
+    }
+  }
+});
+let strangeUnlocked = false;
+
+document.addEventListener("keydown",e=>{
+
+  if(e.altKey && e.key.toLowerCase()==='s'){
+
+    if(!strangeUnlocked){
+
+      strangeUnlocked = true;
+
+      const strangeOption =
+        document.querySelector('[data-d="Strange"]');
+
+      strangeOption.style.display = "block";
+
+      // ← 修正
+      options = Array.from(
+        menu.querySelectorAll('.div-option:not([style*="display:none"])')
+      );
+
+      alert("Strange difficulty unlocked...");
     }
   }
 });
@@ -157,7 +195,42 @@ function selectDifficulty(){
  startGame();
 }
 
+function strangeHell(x,y,t){
 
+  // 波打つDNA弾幕
+  for(let i=0;i<40;i++){
+
+    let a = i*0.35 + t*0.04;
+
+    let wave = Math.sin(t*0.05+i)*80;
+
+    enemyBullets.push({
+      x:x + Math.cos(a)*wave,
+      y:y + Math.sin(a)*20,
+
+      vx:Math.sin(a)*4,
+      vy:Math.cos(a)*4
+    });
+  }
+
+  // ブラックホール吸引弾
+  if(t%25===0){
+
+    for(let i=0;i<20;i++){
+
+      let a = i*Math.PI*2/20;
+
+      enemyBullets.push({
+        x:x + Math.cos(a)*220,
+        y:y + Math.sin(a)*220,
+
+        strange:true,
+        angle:a,
+        dist:220
+      });
+    }
+  }
+}
 // ===== プレイヤー =====
 const player={x:240,y:620,r:3,lives:3,bomb:3,inv:0,bombing:0};
 // Safetyだけ残機5
@@ -315,7 +388,7 @@ function moveBoss(){boss.moveTimer++;boss.x+=boss.vx;if(boss.x<60||boss.x>420)bo
 // ===== 6WAYショット =====
 function shoot6() {
     const slow = keys['Shift'];
-    const speed = 7; // 速さ
+    const speed = 10.5; // 速さ
     if (slow) {
         const offsets = [-24, -14, -6, 6, 14, 24];
         offsets.forEach(off => shots.push({
@@ -377,88 +450,389 @@ function showOverlay(type){
 let timer=0,score=0;
 function startGame(){requestAnimationFrame(loop);}
 function update(){
- if(paused) return;
- timer++; if(player.inv>0)player.inv--; if(player.bombing>0)player.bombing--;
 
- let sp=keys['Shift']?2:4;
- if(keys['ArrowLeft'])player.x-=sp;if(keys['ArrowRight'])player.x+=sp;if(keys['ArrowUp'])player.y-=sp;if(keys['ArrowDown'])player.y+=sp;
- if(autoFire && timer%5===0) shoot6();
+  if(paused) return;
 
- shots.forEach(s=>{s.x+=s.vx;s.y+=s.vy;}); shots=shots.filter(s=>s.y>0&&s.x>0&&s.x<480);
- if(timer>120&&!boss.active) boss.active=true;
+  timer++;
 
- if(boss.active){
-  moveBoss();
-  // stage2は星型弾幕
-  // 2体目以降は常時星弾幕
-if(stage>=2 && timer%(DIFF===diffData.Safety?90:22)===0){
+  if(player.inv>0) player.inv--;
+  if(player.bombing>0) player.bombing--;
 
-  let interval = DIFF===diffData.Safety ? 90 : 30;
-  if(timer%interval===0){
-    starSpell(boss.x,boss.y,timer);
+  // ===== 移動 =====
+  let sp = keys['Shift'] ? 2 : 4;
+
+  if(keys['ArrowLeft'])  player.x -= sp;
+  if(keys['ArrowRight']) player.x += sp;
+  if(keys['ArrowUp'])    player.y -= sp;
+  if(keys['ArrowDown'])  player.y += sp;
+
+  // スマホ移動
+  if(touching){
+    player.x += (touchX-player.x)*0.2;
+    player.y += (touchY-player.y)*0.2;
   }
-// ボス回転
-if(boss.active){
-  boss.angle += 0.03;   // 回転速度
-}
-// スマホ移動
-if(touching){
-  player.x += (touchX-player.x)*0.2;
-  player.y += (touchY-player.y)*0.2;
-}
 
-}
+  // 画面外制限
+  player.x = Math.max(10,Math.min(470,player.x));
+  player.y = Math.max(10,Math.min(710,player.y));
 
-  if(timer%DIFF.rate===0) circle(boss.x,boss.y,DIFF===diffData.Lunatic?60*DIFF.mul:48*DIFF.mul,2.2*DIFF.mul);
-  if(timer%(DIFF===diffData.Lunatic?15:20)===0) spiral(boss.x,boss.y,timer);
-  if(timer%(DIFF===diffData.Lunatic?60:80)===0) rain();
-  if(timer%(DIFF===diffData.Lunatic?100:140)===0) laser(Math.random()*480);
-  if(DIFF===diffData.Lunatic && timer%50===0) circle(boss.x,boss.y,16,5);
- }
+  // 当たり判定
+  player.r = keys['Shift'] ? 3 : 6;
 
- enemyBullets.forEach(b=>{b.x+=b.vx;b.y+=b.vy;}); enemyBullets=enemyBullets.filter(b=>b.y<720&&b.x>-20&&b.x<500);
- lasers.forEach(l=>l.t--); lasers=lasers.filter(l=>l.t>0);
+  // ===== ショット =====
+  if(autoFire && timer%4===0){
+    shoot6();
+  }
 
- enemyBullets.forEach(b=>{let dx=b.x-player.x,dy=b.y-player.y;if(dx*dx+dy*dy<player.r*player.r && player.inv<=0){player.lives=Math.max(0,player.lives-1);player.inv = DIFF===diffData.Safety ? 240 : 120;
-;enemyBullets=[];effect(player.x,player.y,80);}});
- lasers.forEach(l=>{if(player.x>l.x-6 && player.x<l.x+6 && player.inv<=0){player.lives=Math.max(0,player.lives-1);player.inv = DIFF===diffData.Safety ? 240 : 120;
-effect(player.x,player.y,60);}});
+  shots.forEach(s=>{
+    s.x += s.vx;
+    s.y += s.vy;
+  });
 
- if(player.lives===0){showOverlay("gameover");return;}
+  shots = shots.filter(s=>
+    s.y>-20 &&
+    s.x>-20 &&
+    s.x<500
+  );
 
- shots=shots.filter(s=>{let dx=s.x-boss.x,dy=s.y-boss.y;if(dx*dx+dy*dy<900 && boss.active){boss.hp-=5;score+=10;effect(s.x,s.y,5);return false;}return true;});
+  // ===== ボス出現 =====
+  if(timer>120 && !boss.active){
+    boss.active=true;
+  }
 
-if(boss.hp<=0){
+  // ===== ボス =====
+  if(boss.active){
 
-  bossExplosion(boss.x,boss.y);
+    moveBoss();
 
-  if(stage===4){
-    enemyBullets=[];
-    lasers=[];
-    showOverlay("gameclear");
+    boss.angle += 0.03;
+
+    // 通常円形
+    if(timer%DIFF.rate===0){
+      circle(
+        boss.x,
+        boss.y,
+        DIFF===diffData.Lunatic
+          ? 60*DIFF.mul
+          : 48*DIFF.mul,
+        2.2*DIFF.mul
+      );
+    }
+
+    // スパイラル
+    if(timer%(DIFF===diffData.Lunatic?15:20)===0){
+      spiral(boss.x,boss.y,timer);
+    }
+
+    // 雨
+    if(timer%(DIFF===diffData.Lunatic?60:80)===0){
+      rain();
+    }
+
+    // レーザー
+    if(timer%(DIFF===diffData.Lunatic?100:140)===0){
+      laser(Math.random()*480);
+    }
+
+    // 星弾幕
+    if(stage>=2){
+
+      let interval =
+        DIFF===diffData.Safety
+        ? 90
+        : 30;
+
+      if(timer%interval===0){
+        starSpell(boss.x,boss.y,timer);
+      }
+    }
+
+    // ===== Lunatic =====
+    if(DIFF===diffData.Lunatic){
+
+      if(timer%25===0){
+        lunaticHell(boss.x,boss.y,timer);
+      }
+
+      if(timer%50===0){
+        circle(boss.x,boss.y,16,5);
+      }
+    }
+
+    // ===== Insane =====
+    if(DIFF_NAME==="Insane"){
+
+      if(timer%6===0){
+        spiral(boss.x,boss.y,timer*2);
+      }
+
+      if(timer%20===0){
+        circle(boss.x,boss.y,80,3.5);
+        circle(boss.x,boss.y,80,2.0);
+      }
+
+      if(timer%15===0){
+        starSpell(boss.x,boss.y,timer);
+      }
+
+      if(timer%40===0){
+        for(let i=0;i<4;i++){
+          laser(Math.random()*480);
+        }
+      }
+
+      if(timer%25===0){
+
+        for(let i=0;i<60;i++){
+
+          enemyBullets.push({
+            x:Math.random()*480,
+            y:0,
+            vx:Math.sin(i)*1.5,
+            vy:4+Math.random()*3
+          });
+        }
+      }
+
+      // 追尾弾
+      if(timer%18===0){
+
+        let dx = player.x-boss.x;
+        let dy = player.y-boss.y;
+
+        let len = Math.hypot(dx,dy);
+
+        enemyBullets.push({
+          x:boss.x,
+          y:boss.y,
+          vx:(dx/len)*5,
+          vy:(dy/len)*5
+        });
+      }
+
+      // 壁弾
+      if(timer%90===0){
+
+        for(let y=0;y<720;y+=20){
+
+          enemyBullets.push({
+            x:0,
+            y:y,
+            vx:3,
+            vy:0
+          });
+
+          enemyBullets.push({
+            x:480,
+            y:y,
+            vx:-3,
+            vy:0
+          });
+        }
+      }
+
+      boss.vx = Math.sin(timer*0.05)*5;
+      boss.vy = Math.cos(timer*0.04)*3;
+    }
+
+    // ===== Strange =====
+    if(DIFF_NAME==="Strange"){
+
+      if(timer%5===0){
+        strangeHell(boss.x,boss.y,timer);
+      }
+
+      // 瞬間移動
+      if(timer%120===0){
+
+        boss.x = 60 + Math.random()*360;
+        boss.y = 80 + Math.random()*180;
+
+        effect(boss.x,boss.y,80);
+      }
+    }
+  }
+
+  // ===== 敵弾更新 =====
+  enemyBullets.forEach(b=>{
+
+    // Strange弾
+    if(b.strange){
+
+      b.angle += 0.08;
+      b.dist -= 2.4;
+
+      b.x =
+        boss.x +
+        Math.cos(b.angle)*b.dist;
+
+      b.y =
+        boss.y +
+        Math.sin(b.angle)*b.dist;
+
+    }else{
+
+      b.x += b.vx;
+      b.y += b.vy;
+    }
+  });
+
+  enemyBullets = enemyBullets.filter(b=>
+    b.y<740 &&
+    b.x>-40 &&
+    b.x<520
+  );
+
+  // ===== レーザー =====
+  lasers.forEach(l=>{
+    l.t--;
+  });
+
+  lasers = lasers.filter(l=>l.t>0);
+
+  // ===== 被弾 =====
+  enemyBullets.forEach(b=>{
+
+    let dx = b.x-player.x;
+    let dy = b.y-player.y;
+
+    if(
+      dx*dx+dy*dy <
+      player.r*player.r &&
+      player.inv<=0
+    ){
+
+      player.lives = Math.max(0,player.lives-1);
+
+      player.inv =
+        DIFF===diffData.Safety
+        ? 240
+        : 120;
+
+      enemyBullets=[];
+
+      effect(player.x,player.y,80);
+    }
+  });
+
+  // ===== レーザー被弾 =====
+  lasers.forEach(l=>{
+
+    if(
+      player.x>l.x-6 &&
+      player.x<l.x+6 &&
+      player.inv<=0
+    ){
+
+      player.lives = Math.max(0,player.lives-1);
+
+      player.inv =
+        DIFF===diffData.Safety
+        ? 240
+        : 120;
+
+      effect(player.x,player.y,60);
+    }
+  });
+
+  // ===== ゲームオーバー =====
+  if(player.lives===0){
+
+    showOverlay("gameover");
+
     return;
   }
 
-  stage++;
-  score+=1000;
+  // ===== ボス被弾 =====
+  shots = shots.filter(s=>{
 
-  let hpBase = DIFF===diffData.Lunatic ? 3000 : 1500;
-  boss.maxHp = (hpBase + (stage-1)*(DIFF===diffData.Lunatic?2000:1000)) * DIFF.hpMul;
-  boss.hp = boss.maxHp;
+    let dx = s.x-boss.x;
+    let dy = s.y-boss.y;
 
-  boss.active=false;
-  timer=0;
-}
+    if(
+      dx*dx+dy*dy < 900 &&
+      boss.active
+    ){
 
+      boss.hp -= 5;
 
- // 星型爆発エフェクト
- effects.forEach(e=>{
-   e.x+=e.vx; e.y+=e.vy; e.t--;
-   if(e.star && e.t%5===0){
-     for(let i=0;i<8;i++){let a=i*Math.PI/4;enemyBullets.push({x:e.x,y:e.y,vx:Math.cos(a)*3,vy:Math.sin(a)*3});}
-   }
- });
- effects=effects.filter(e=>e.t>0);
+      score += 10;
+
+      effect(s.x,s.y,5);
+
+      return false;
+    }
+
+    return true;
+  });
+
+  // ===== ボス撃破 =====
+  if(boss.hp<=0){
+
+    bossExplosion(boss.x,boss.y);
+
+    if(stage===4){
+
+      enemyBullets=[];
+      lasers=[];
+
+      showOverlay("gameclear");
+
+      return;
+    }
+
+    stage++;
+
+    score += 1000;
+
+    let hpBase =
+      DIFF===diffData.Lunatic
+      ? 3000
+      : 1500;
+
+    boss.maxHp =
+      (
+        hpBase +
+        (stage-1) *
+        (
+          DIFF===diffData.Lunatic
+          ? 2000
+          : 1000
+        )
+      ) * DIFF.hpMul;
+
+    boss.hp = boss.maxHp;
+
+    boss.active = false;
+
+    timer = 0;
+  }
+
+  // ===== エフェクト =====
+  effects.forEach(e=>{
+
+    e.x += e.vx;
+    e.y += e.vy;
+
+    e.t--;
+
+    if(e.star && e.t%5===0){
+
+      for(let i=0;i<8;i++){
+
+        let a=i*Math.PI/4;
+
+        enemyBullets.push({
+          x:e.x,
+          y:e.y,
+          vx:Math.cos(a)*3,
+          vy:Math.sin(a)*3
+        });
+      }
+    }
+  });
+
+  effects = effects.filter(e=>e.t>0);
 }
 
 function draw(){
