@@ -62,10 +62,13 @@ canvas{display:block;margin:0 auto;background:#000}
 </div>
  <div class="div-option" data-d="Insane" style="display:none;">Insane</div>
 <div class="div-option" data-d="Strange" style="display:none;">
-  Strange
-</div>
-</div>
+  Strange</div>
+<h2 style="margin-top:20px;">Bullet Speed</h2>
 
+<div id="speedSelect" class="div-option">
+Bullet Speed : <span id="speedValue">11.0</span>
+</div>
+</div>
 <div id="overlay">
  <canvas id="overlayCanvas"></canvas>
  <h1 id="overlay-title"></h1>
@@ -77,6 +80,7 @@ canvas{display:block;margin:0 auto;background:#000}
 
 <script>
 let DIFF_NAME = "Normal"; // ← 追加
+let bulletSpeed = 10.5;   // デフォルト
 const canvas=document.getElementById("game");
 const ctx=canvas.getContext("2d");
 canvas.width=480; canvas.height=720;
@@ -107,6 +111,12 @@ function updateMenuVisual(){
     o.classList.toggle("selected", i===selectedIndex);
   });
 }
+const speedText = document.getElementById("speedValue");
+
+function updateSpeedText(){
+    speedText.textContent = bulletSpeed.toFixed(1);
+}
+updateSpeedText();
 let insaneUnlocked = false;
 
 document.addEventListener("keydown",e=>{
@@ -167,10 +177,20 @@ document.addEventListener("keydown",e=>{
      selectedIndex=(selectedIndex+1)%options.length;
      updateMenuVisual();
    }
+     if (e.key === "ArrowLeft") {
+        bulletSpeed = Math.max(6, bulletSpeed - 0.5);
+        updateSpeedText();
+    }
+
+    if (e.key === "ArrowRight") {
+        bulletSpeed = Math.min(12, bulletSpeed + 0.5);
+        updateSpeedText();
+    }
    if(e.key==='Enter'){
      selectDifficulty();
    }
  }
+   
 });
 
 // ★ ここが重要修正 ★
@@ -388,17 +408,21 @@ function moveBoss(){boss.moveTimer++;boss.x+=boss.vx;if(boss.x<60||boss.x>420)bo
 // ===== 6WAYショット =====
 function shoot6() {
     const slow = keys['Shift'];
-    const speed = 10.5; // 速さ
+    const speed = bulletSpeed; // ← 設定した弾速を使用
+
     if (slow) {
         const offsets = [-24, -14, -6, 6, 14, 24];
+
         offsets.forEach(off => shots.push({
             x: player.x + off,
             y: player.y,
             vx: 0,
             vy: -speed
         }));
+
     } else {
         const angles = [-0.55, -0.32, -0.16, 0.16, 0.32, 0.55];
+
         angles.forEach(a => shots.push({
             x: player.x,
             y: player.y,
@@ -436,8 +460,9 @@ function showOverlay(type){
  // ★ 強制的に更新
  overlayScore.innerHTML = `
    Score: ${score}<br>
-   Difficulty: ${DIFF_NAME}
- `;
+   Difficulty: ${DIFF_NAME}<br>
+   Shot Speed: ${bulletSpeed.toFixed(1)}
+`;
 
  overlayScore.style.display = "block"; // ← これ追加（重要）
 
@@ -1020,28 +1045,21 @@ function draw(){
   // ===== UI =====
   ctx.fillStyle="#fff";
   ctx.fillText(`Lives:${player.lives}`,10,40);
-  ctx.fillText(`Bomb:${player.bomb}`,10,60);
-  ctx.fillText(`Score:${score}`,10,80);
-  ctx.fillText(`Stage ★${stage}`,10,100);
-
+ctx.fillText(`Bomb:${player.bomb}`,10,60);
+ctx.fillText(`Score:${score}`,10,80);
+ctx.fillText(`Shot Speed: ${bulletSpeed.toFixed(1)}`,10,100);
+ctx.fillText(`Stage ★${stage}`,10,120);
+  
   for(let i=0;i<stage;i++){
     ctx.fillStyle="yellow";
-    ctx.fillText("★",10+10*i,120);
-  }
+    ctx.fillText("★",10+10*i,140);
+}
 
   if(paused){
     ctx.fillStyle="white";
     ctx.fillText("PAUSED",200,360);
   }
 }
-
-
-
-
-
-
-
-
 
 function overlayLoop(){
  overlayScale += overlayScaleDir;
