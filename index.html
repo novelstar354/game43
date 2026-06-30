@@ -57,7 +57,7 @@ canvas{display:block;margin:0 auto;background:#000}
  <div class="div-option" data-d="Easy">Easy</div>
  <div class="div-option" data-d="Normal">Normal</div>
  <div class="div-option" data-d="Hard">Hard</div>
-<div class="div-option" data-d="Lunatic"">
+<div class="div-option" data-d="Lunatic">
   Lunatic
 </div>
  <div class="div-option" data-d="Insane" style="display:none;">Insane</div>
@@ -448,7 +448,9 @@ function showOverlay(type){
 
 // ===== メイン =====
 let timer=0,score=0;
-function startGame(){requestAnimationFrame(loop);}
+function startGame(){
+    requestAnimationFrame(loop);
+}
 function update(){
 
   if(paused) return;
@@ -691,15 +693,18 @@ function update(){
   lasers = lasers.filter(l=>l.t>0);
 
   // ===== 被弾 =====
-  enemyBullets.forEach(b=>{
+  const bulletRadius = 4;
 
-    let dx = b.x-player.x;
-    let dy = b.y-player.y;
+enemyBullets.forEach(b=>{
+
+    const dx = b.x - player.x;
+    const dy = b.y - player.y;
+
+    const hitRadius = player.r + bulletRadius;
 
     if(
-      dx*dx+dy*dy <
-      player.r*player.r &&
-      player.inv<=0
+        dx*dx + dy*dy < hitRadius * hitRadius &&
+        player.inv <= 0
     ){
 
       player.lives = Math.max(0,player.lives-1);
@@ -1083,10 +1088,27 @@ const oldUpdate = update;
 update = function(){
  oldUpdate();
 
- // ===== スマホ操作 =====
-let touching=false;
-let touchX=240,touchY=600;
 
+
+
+
+
+
+ // ZまたはXで常時連射
+ if(autoFire && timer%4===0) shoot6();
+
+ // Shift低速＝当たり判定小
+ player.r = keys['Shift']?3:6;
+
+ // Lunaticだけ追加弾幕
+ if(boss.active && DIFF===diffData.Lunatic && timer%25===0){
+   lunaticHell(boss.x,boss.y,timer);
+ }
+
+ // 画面外制限
+ player.x=Math.max(10,Math.min(470,player.x));
+ player.y=Math.max(10,Math.min(710,player.y));
+}
 canvas.addEventListener("touchstart",e=>{
   touching=true;
   const r=canvas.getBoundingClientRect();
@@ -1115,24 +1137,6 @@ canvas.addEventListener("touchend",()=>{
   touching=false;
   autoFire=false;
 });
-
-
-
- // ZまたはXで常時連射
- if(autoFire && timer%4===0) shoot6();
-
- // Shift低速＝当たり判定小
- player.r = keys['Shift']?3:6;
-
- // Lunaticだけ追加弾幕
- if(boss.active && DIFF===diffData.Lunatic && timer%25===0){
-   lunaticHell(boss.x,boss.y,timer);
- }
-
- // 画面外制限
- player.x=Math.max(10,Math.min(470,player.x));
- player.y=Math.max(10,Math.min(710,player.y));
-}
 function bossExplosion(x,y){
 
   // 大量パーティクル
