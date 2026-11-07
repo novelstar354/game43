@@ -85,6 +85,32 @@ const canvas=document.getElementById("game");
 const ctx=canvas.getContext("2d");
 canvas.width=480; canvas.height=720;
 
+// ===== PNGスプライト =====
+// imagesフォルダ内のPNGを読み込みます。画像が未読込なら簡易図形にフォールバックします。
+const spriteImages = {};
+function loadSprite(name, src){
+  const img = new Image();
+  img.src = src;
+  spriteImages[name] = img;
+  img.onerror = () => console.warn("PNG画像を読み込めません:", src);
+}
+loadSprite("player", "images/player.png");
+loadSprite("enemy", "images/enemy.png");
+loadSprite("bullet", "images/bullet.png");
+loadSprite("playerShot", "images/player-shot.png");
+function drawSprite(name, x, y, w, h, rotation=0){
+  const img = spriteImages[name];
+  if(img && img.complete && img.naturalWidth){
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(rotation);
+    ctx.drawImage(img,-w/2,-h/2,w,h);
+    ctx.restore();
+    return true;
+  }
+  return false;
+}
+
 // ===== 難易度 =====
 const diffData={
  Safety:{mul:0.4,rate:220,hpMul:0.5},
@@ -358,7 +384,59 @@ function effect(x,y,n){for(let i=0;i<n;i++)effects.push({x,y,vx:(Math.random()-0
 function circle(x,y,n,s){for(let i=0;i<n;i++){let a=i*Math.PI*2/n;enemyBullets.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s});}}
 function spiral(x,y,t){let count=DIFF===diffData.Lunatic?24:16;for(let i=0;i<count;i++){let a=t*0.15+i*0.25;let spd=DIFF===diffData.Lunatic?3:2.5;enemyBullets.push({x,y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd});}}
 function rain(){let cnt=DIFF===diffData.Lunatic?30*DIFF.mul:20*DIFF.mul;for(let i=0;i<cnt;i++)enemyBullets.push({x:Math.random()*480,y:0,vx:0,vy:(2+Math.random()*3)*DIFF.mul});}
-function laser(x){lasers.push({x,w:10,t:DIFF===diffData.Lunatic?120:90});}
+// ===== レーザー生成 =====
+function laser(angle = Math.PI / 2) {
+  const x = 40 + Math.random() * 400;
+  const y = 100 + Math.random() * 450;
+
+  lasers.push({
+    x, y,
+    angle,
+    warning: 90,
+    life: 180,
+    w: 10
+  });
+}
+
+// ===== 難易度別レーザー =====
+function laserVolley() {
+  const counts = {
+    Safety: 1,
+    Easy: 1,
+    Normal: 1,
+    Hard: 3,
+    Lunatic: 5,
+    Strange: 7,
+    Insane: 9
+  };
+
+  const count = counts[DIFF_NAME] || 1;
+
+  const directions = [
+    0,
+    Math.PI / 2,
+    Math.PI / 4,
+    -Math.PI / 4,
+    3 * Math.PI / 4,
+    -3 * Math.PI / 4
+  ];
+
+  for (let i = 0; i < count; i++) {
+    let angle;
+
+    if (DIFF_NAME === "Safety" ||
+        DIFF_NAME === "Easy" ||
+        DIFF_NAME === "Normal") {
+      angle = Math.PI / 2;
+    } else {
+      angle = directions[
+        Math.floor(Math.random() * directions.length)
+      ];
+    }
+
+    laser(angle);
+  }
+}
 
 // ===== 完全星型弾幕 =====
 function starSpell(x,y,t){
@@ -556,10 +634,20 @@ function update(){
       rain();
     }
 
-    // レーザー
-    if(timer%(DIFF===diffData.Lunatic?100:140)===0){
-      laser(Math.random()*480);
-    }
+    // 難易度別レーザー発射
+const laserIntervals = {
+  Safety: 240,
+  Easy: 220,
+  Normal: 200,
+  Hard: 170,
+  Lunatic: 140,
+  Strange: 120,
+  Insane: 100
+};
+
+if(timer % laserIntervals[DIFF_NAME] === 0){
+  laserVolley();
+}
 
     // 星弾幕
     if(stage>=2){
@@ -602,11 +690,7 @@ function update(){
         starSpell(boss.x,boss.y,timer);
       }
 
-      if(timer%40===0){
-        for(let i=0;i<4;i++){
-          laser(Math.random()*480);
-        }
-      }
+      
 
       if(timer%25===0){
 
@@ -710,12 +794,18 @@ function update(){
     b.x<520
   );
 
-  // ===== レーザー =====
   lasers.forEach(l=>{
-    l.t--;
-  });
+  if(l.warning > 0){
+    l.warning--;
+  } else {
+    l.life--;
+  }
+});
 
-  lasers = lasers.filter(l=>l.t>0);
+lasers = lasers.filter(l=>
+  l.warning > 0 || l.life > 0
+);
+
 
   // ===== 被弾 =====
   const bulletRadius = 4;
@@ -746,24 +836,28 @@ enemyBullets.forEach(b=>{
   });
 
   // ===== レーザー被弾 =====
-  lasers.forEach(l=>{
+lasers.forEach(l => {
+  // 予告中は当たり判定なし
+  if (l.warning > 0 || player.inv > 0) return;
 
-    if(
-      player.x>l.x-6 &&
-      player.x<l.x+6 &&
-      player.inv<=0
-    ){
+  const dx = Math.cos(l.angle);
+  const dy = Math.sin(l.angle);
 
-      player.lives = Math.max(0,player.lives-1);
+  // レーザーの中心線と自機の距離
+  const px = player.x - l.x;
+  const py = player.y - l.y;
 
-      player.inv =
-        DIFF===diffData.Safety
-        ? 240
-        : 120;
+  const distance = Math.abs(px * dy - py * dx);
 
-      effect(player.x,player.y,60);
-    }
-  });
+  // レーザーの範囲内か判定
+  if (distance < l.w / 2 + player.r) {
+    player.lives = Math.max(0, player.lives - 1);
+
+    player.inv = DIFF === diffData.Safety ? 240 : 120;
+
+    effect(player.x, player.y, 60);
+  }
+});
 
   // ===== ゲームオーバー =====
   if(player.lives===0){
@@ -872,17 +966,16 @@ function draw(){
   ctx.fillRect(0,0,480,720);
 
   // ===== 自機 =====
-  ctx.fillStyle = (player.inv%10<5) ? "cyan" : "white";
+  // 自機PNG（無敵時間中は点滅）
+  if(player.inv===0 || player.inv%10<5){
+    if(!drawSprite("player",player.x,player.y,38,46)){
+      ctx.fillStyle="cyan";
+      ctx.beginPath(); ctx.arc(player.x,player.y,6,0,Math.PI*2); ctx.fill();
+    }
+  }
 
-  ctx.beginPath();
-  ctx.arc(player.x,player.y,6,0,Math.PI*2);
-  ctx.fill();
-
-  // 当たり判定
-  ctx.fillStyle="red";
-  ctx.beginPath();
-  ctx.arc(player.x,player.y,player.r,0,Math.PI*2);
-  ctx.fill();
+  // 当たり判定は従来どおり。デバッグ表示したい場合だけコメント解除
+  // ctx.strokeStyle="red"; ctx.beginPath(); ctx.arc(player.x,player.y,player.r,0,Math.PI*2); ctx.stroke();
 
   // =========================
   // ===== ボス描画 ==========
@@ -904,30 +997,14 @@ function draw(){
 
     bossColor = getBossColor();
 
-    function drawStar(outer, inner, points){
-      ctx.beginPath();
-      for(let i=0;i<points*2;i++){
-        let r = (i%2===0)?outer:inner;
-        let a = -Math.PI/2 + i*Math.PI/points;
-        let x = Math.cos(a)*r;
-        let y = Math.sin(a)*r;
-        if(i===0) ctx.moveTo(x,y);
-        else ctx.lineTo(x,y);
-      }
-      ctx.closePath();
-      ctx.fill();
-    }
-
+    // 敵（ボス）PNG
     ctx.save();
-    ctx.translate(boss.x,boss.y);
-    ctx.rotate(boss.angle);
-
     ctx.shadowColor=bossColor;
-    ctx.shadowBlur=25;
-    ctx.fillStyle=bossColor;
-
-    drawStar(36,14,5);
-
+    ctx.shadowBlur=18;
+    if(!drawSprite("enemy",boss.x,boss.y,76,76,boss.angle)){
+      ctx.fillStyle=bossColor;
+      ctx.beginPath(); ctx.arc(boss.x,boss.y,30,0,Math.PI*2); ctx.fill();
+    }
     ctx.restore();
 
     // ===== HPバー =====
@@ -1017,17 +1094,57 @@ function draw(){
   // =========================
   // ===== 自機ショット ======
   // =========================
-  ctx.fillStyle="white";
   shots.forEach(s=>{
-    ctx.fillRect(s.x-2,s.y-6,4,8);
+    if(!drawSprite("playerShot",s.x,s.y,8,18)){
+      ctx.fillStyle="white";
+      ctx.fillRect(s.x-2,s.y-6,4,8);
+    }
   });
+// ===== レーザー描画 =====
+ctx.save();
 
+// HPバーより上には描画しない
+ctx.beginPath();
+ctx.rect(0, 28, 480, 692);
+ctx.clip();
+
+lasers.forEach(l=>{
+  const dx = Math.cos(l.angle);
+  const dy = Math.sin(l.angle);
+
+  const length = 1200;
+
+  const x1 = l.x - dx * length;
+  const y1 = l.y - dy * length;
+  const x2 = l.x + dx * length;
+  const y2 = l.y + dy * length;
+
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+
+  if(l.warning > 0){
+    // 発射前の薄い赤色の予告線
+    ctx.strokeStyle = "rgba(255,40,40,0.28)";
+    ctx.lineWidth = 3;
+  } else {
+    // 発射中のレーザー
+    ctx.strokeStyle = "rgba(255,80,100,0.9)";
+    ctx.lineWidth = 10;
+    ctx.shadowColor = "red";
+    ctx.shadowBlur = 18;
+  }
+
+  ctx.stroke();
+});
+
+ctx.restore();
   // ===== 敵弾 =====
-  ctx.fillStyle="magenta";
   enemyBullets.forEach(b=>{
-    ctx.beginPath();
-    ctx.arc(b.x,b.y,4,0,Math.PI*2);
-    ctx.fill();
+    if(!drawSprite("bullet",b.x,b.y,16,16)){
+      ctx.fillStyle="magenta";
+      ctx.beginPath(); ctx.arc(b.x,b.y,4,0,Math.PI*2); ctx.fill();
+    }
   });
 
   // ===== エフェクト =====
