@@ -1178,11 +1178,12 @@ ctx.restore();
 ctx.fillText(`Bomb:${player.bomb}`,10,60);
 ctx.fillText(`Score:${score}`,10,80);
 ctx.fillText(`Shot Speed: ${bulletSpeed.toFixed(1)}`,10,100);
-ctx.fillText(`Stage ★${stage}`,10,120);
-  
+ctx.fillText(`difficulty: ${DIFF_NAME}`, 10 ,120);
+ctx.fillText(`Stage ★${stage}`,10,140);
+    
   for(let i=0;i<stage;i++){
     ctx.fillStyle="yellow";
-    ctx.fillText("★",10+10*i,140);
+    ctx.fillText("★",10+10*i,160);
 }
 
   if(paused){
