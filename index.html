@@ -353,11 +353,24 @@ if(DIFF_NAME==="Insane"){
 
 let autoFire=false;
 const keys={};
-document.onkeydown=e=>{
- keys[e.key]=true;
- if(e.key==='p') paused=!paused;
- if(e.key==='x') autoFire=!autoFire;
- if(e.key==='b' && player.bomb>0 && player.bombing===0){player.bomb--; player.bombing=120; enemyBullets=[]; lasers=[]; effect(player.x,player.y,120);}
+document.onkeydown = e => {
+  keys[e.key] = true;
+
+  if(e.key.toLowerCase() === 'p') paused = !paused;
+  if(e.key.toLowerCase() === 'x') autoFire = !autoFire;
+
+  // Shift中でもボムを発動可能
+  if(
+    e.key.toLowerCase() === 'b' &&
+    player.bomb > 0 &&
+    player.bombing === 0
+  ){
+    player.bomb--;
+    player.bombing = 120;
+    enemyBullets = [];
+    lasers = [];
+    effect(player.x, player.y, 120);
+  }
 };
 document.onkeyup=e=>keys[e.key]=false;
 let paused=false;
